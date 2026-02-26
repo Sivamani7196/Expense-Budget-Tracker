@@ -131,3 +131,6 @@ npm run dev -- --port 3001
 3. Deploy `server.ts` to a Node.js hosting service
 4. Update `VITE_API_URL` to point to production API
 5. Change `VITE_JWT_SECRET` to a secure random string
+
+For a concrete hosted setup using Vercel (frontend) + Render (backend), follow:
+- [DEPLOYMENT_VERCEL_RENDER.md](DEPLOYMENT_VERCEL_RENDER.md)

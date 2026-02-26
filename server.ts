@@ -8,10 +8,15 @@ import dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
 
 const app = express();
-const PORT = process.env.SERVER_PORT || 5000;
+const PORT = Number(process.env.PORT || process.env.SERVER_PORT || 5000);
+const FRONTEND_URL = process.env.FRONTEND_URL || '*';
+const corsOrigins = FRONTEND_URL
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
 // Middleware
-app.use(cors());
+app.use(cors({ origin: corsOrigins.includes('*') ? true : corsOrigins }));
 app.use(express.json());
 
 // MySQL Pool
@@ -252,4 +257,5 @@ app.get('/api/health', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`🌐 CORS origins: ${corsOrigins.join(', ')}`);
 });
