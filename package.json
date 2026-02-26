@@ -7,11 +7,15 @@
     "dev": "concurrently \"npm run server:tsx\" \"npm run dev:frontend\"",
     "dev:frontend": "vite",
     "dev:full": "npm run dev",
+    "start": "npm run server:tsx",
     "server": "node --loader ts-node/esm server.ts",
     "server:tsx": "tsx server.ts",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
+  },
+  "engines": {
+    "node": ">=20"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",

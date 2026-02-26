@@ -32,7 +32,7 @@ USE financeiq;
 
 ### 2. Configure Environment
 
-Update `.env.local` with your MySQL credentials:
+Create `.env.local` from `.env.example`, then update with your MySQL credentials:
 
 ```env
 VITE_DB_HOST=localhost

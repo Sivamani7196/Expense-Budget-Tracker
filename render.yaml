@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: expense-budget-api
+    runtime: node
+    rootDir: .
+    buildCommand: npm install
+    startCommand: npm run server:tsx
+    plan: free
+    autoDeploy: true
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: FRONTEND_URL
+        sync: false
+      - key: VITE_DB_HOST
+        sync: false
+      - key: VITE_DB_PORT
+        sync: false
+      - key: VITE_DB_USER
+        sync: false
+      - key: VITE_DB_PASSWORD
+        sync: false
+      - key: VITE_DB_NAME
+        sync: false

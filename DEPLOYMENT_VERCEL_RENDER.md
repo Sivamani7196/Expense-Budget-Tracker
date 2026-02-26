@@ -7,6 +7,11 @@ This guide is for this exact repository:
 
 ## 10-Minute Checklist
 
+This repo now includes deployment config files to reduce manual setup:
+- `render.yaml` (Render Blueprint)
+- `vercel.json` (Vercel config + SPA rewrite)
+- `.env.example` (all required env vars)
+
 ### 0) Prerequisites (1 min)
 - GitHub repo is pushed: `https://github.com/Sivamani7196/Expense-Budget-Tracker`
 - Database schema file is ready: `database/schema.sql`
@@ -28,14 +33,13 @@ Collect DB values:
 - `VITE_DB_NAME`
 
 ### 2) Deploy backend on Render (3 min)
-1. Go to Render -> New -> Web Service
+1. Go to Render -> New -> Blueprint
 2. Connect GitHub repo: `Sivamani7196/Expense-Budget-Tracker`
-3. Configure:
+3. Render auto-detects settings from `render.yaml`:
    - Name: `expense-budget-api`
-   - Environment: `Node`
-   - Root Directory: leave empty
    - Build Command: `npm install`
    - Start Command: `npm run server:tsx`
+   - Health check: `/api/health`
 4. Add Environment Variables in Render:
    - `PORT=10000` (Render sets this automatically; optional)
    - `SERVER_PORT=10000` (optional fallback)
@@ -55,11 +59,11 @@ Health check:
 ### 3) Deploy frontend on Vercel (2 min)
 1. Go to Vercel -> Add New Project
 2. Import same GitHub repo
-3. Configure project:
-   - Framework Preset: `Vite`
-   - Root Directory: `.`
+3. Vercel auto-detects from `vercel.json`:
+   - Framework: `Vite`
    - Build Command: `npm run build`
    - Output Directory: `dist`
+   - SPA rewrite enabled for client-side routing
 4. Add Environment Variable:
    - `VITE_API_URL=https://<render-domain>/api`
 5. Deploy and open your Vercel URL
@@ -81,6 +85,9 @@ Health check:
 - `VITE_DB_NAME`
 - `FRONTEND_URL`
 - `PORT` or `SERVER_PORT`
+
+### Local template
+- Copy `.env.example` -> `.env.local` for local development
 
 ### Vercel (Frontend)
 - `VITE_API_URL`
