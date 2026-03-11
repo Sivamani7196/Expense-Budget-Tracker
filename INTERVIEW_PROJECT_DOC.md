@@ -1,7 +1,7 @@
 # FinanceIQ Project Document (Interview Version)
 
 ## 1) Project Summary
-FinanceIQ is a full-stack personal finance tracker that helps users record income/expenses, set category budgets, and view analytics with AI-inspired forecasting. The goal is to give users a clear picture of their financial behavior and provide actionable insights, not just a ledger. The system is built with a React + TypeScript frontend, an Express + TypeScript backend, and a MySQL database.
+FinanceIQ is a full-stack personal finance tracker that helps users record income/expenses, set category budgets, and view analytics with real ML forecasting. The goal is to give users a clear picture of their financial behavior and provide actionable insights, not just a ledger. The system is built with a React + TypeScript frontend, an Express + TypeScript backend, a Python ML service, and a MySQL database.
 
 ## 2) Problem Statement and Motivation
 Most finance apps stop at expense logging and do not explain patterns or future risk. FinanceIQ addresses this by combining core bookkeeping features (transactions, budgets) with a lightweight forecasting engine. It surfaces trend direction, confidence scores, anomaly alerts, and recommendations to help users make better decisions.
@@ -25,7 +25,7 @@ The architecture follows a classic client-server model:
 - React frontend calls the REST API.
 - Express server handles authentication, transactions, and budgets.
 - MySQL stores all persistent data.
-- The AI analysis runs client-side using historical transactions.
+- A Python ML service performs model training and inference using a dataset plus user transactions.
 
 ## 5) Data Model (MySQL)
 Three core tables:
@@ -58,34 +58,29 @@ Analytics Dashboard
 - Recent transactions feed
 
 ## 7) AI/Forecasting Feature (Implementation Overview)
-FinanceIQ includes an AI-inspired forecasting layer. This is not a deployed ML service; it is client-side statistical forecasting designed for explainability.
+FinanceIQ includes a real backend ML forecasting layer. The backend calls a Python model service that trains and predicts from both historical dataset rows and user transaction history.
 
 Pipeline
 1) Transactions load into the finance hook.
-2) AI hooks watch data changes and debounce analysis.
-3) The forecasting engine generates insights and predictions.
-4) UI renders forecasts, anomalies, and recommendations.
+2) Advanced AI hook sends normalized transactions to `POST /api/ai/advanced-forecast`.
+3) Express invokes `ml/ai_forecast_service.py`.
+4) Python merges `ml/datasets/finance_spending_dataset.csv` with user-derived supervised samples.
+5) Models return forecasts, anomalies, confidence, and recommendations.
+6) UI renders model outputs in real time.
 
-Baseline Analysis (Fast Engine)
-- Moving average and exponential smoothing for baseline spend
-- Trend detection via linear regression slope
-- Seasonal cycle detection using time grouping
-- Anomaly detection with mean + standard deviation thresholds
-- Category pattern analysis (frequency, volatility, predictability)
+Modeling Details
+- RandomForestRegressor per category for next-amount forecasting
+- IsolationForest for anomaly detection
+- Calendar + amount features (`amount`, `day_of_week`, `day_of_month`, `month`, `is_weekend`)
+- Confidence scoring from MAE-to-variance ratio
+- Trend and risk scoring from volatility and slope signals
 
 Outputs
 - Predicted spend per category
 - Trend direction (increasing/decreasing/stable)
-- Confidence scores
-- Anomaly list with reasons
-- Recommendations based on risk and volatility
-
-Advanced Analysis (Ensemble Simulation)
-- Neural-network style predictor
-- ARIMA-style time series model
-- SVR-style regression
-- Ensemble weighting across models
-- Anomaly scoring with isolation-forest style logic
+- Confidence scores (overall + by category)
+- Anomaly list with anomaly score and reason
+- Recommendations based on risk, volatility, and pattern type
 
 ## 8) Example AI Output (Interview-Friendly)
 If Food expenses were 2000, 2200, 2500, 2900 in recent months:
@@ -104,7 +99,7 @@ If Food expenses were 2000, 2200, 2500, 2900 in recent months:
 Short term
 - Add JWT auth middleware and route protection.
 - Validate request payloads with a schema validator (Zod or Joi).
-- Move AI processing to backend for larger datasets.
+- Add model cache so retraining is avoided on each request.
 
 Long term
 - Real ML pipeline with training data (Prophet/LSTM/XGBoost).

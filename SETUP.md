@@ -11,7 +11,8 @@ The application uses a **client-server architecture**:
 
 1. **MySQL Server** installed and running
 2. **Node.js** (v16+) installed
-3. Database created with schema
+3. **Python 3.10+** installed and available as `python`
+4. Database created with schema
 
 ## Quick Start
 
@@ -46,6 +47,26 @@ VITE_JWT_SECRET=change-this-in-production
 ```
 
 ### 3. Start Frontend + Backend
+
+Install Node dependencies:
+
+```bash
+npm install
+```
+
+Install Python ML dependencies:
+
+```bash
+python -m pip install -r ml/requirements.txt
+```
+
+If your Python command is not `python`, set it in `.env.local`:
+
+```env
+PYTHON_EXECUTABLE=py
+```
+
+Then start both frontend and backend:
 
 Open **Terminal 1**:
 ```bash
@@ -86,6 +107,9 @@ npm run server:tsx
 ### Budgets
 - `GET /api/budgets/:userId` - Get user's budgets
 - `POST /api/budgets` - Create budget
+
+### AI Forecasting
+- `POST /api/ai/advanced-forecast` - Runs real ML models using dataset + user transactions
 
 ## Features
 

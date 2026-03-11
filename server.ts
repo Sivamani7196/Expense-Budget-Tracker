@@ -4,16 +4,84 @@ import mysql from 'mysql2/promise';
 import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { spawn } from 'child_process';
 
 dotenv.config({ path: '.env.local' });
 
 const app = express();
 const PORT = Number(process.env.PORT || process.env.SERVER_PORT || 5000);
 const FRONTEND_URL = process.env.FRONTEND_URL || '*';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const PYTHON_EXECUTABLE = process.env.PYTHON_EXECUTABLE || 'python';
+const AI_SCRIPT_PATH = path.resolve(__dirname, 'ml', 'ai_forecast_service.py');
+const AI_DATASET_PATH = path.resolve(__dirname, 'ml', 'datasets', 'finance_spending_dataset.csv');
 const corsOrigins = FRONTEND_URL
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
+
+type AITransactionInput = {
+  amount: number;
+  category: string;
+  type: 'income' | 'expense';
+  date: string;
+};
+
+const runPythonAIInference = async (transactions: AITransactionInput[]) => {
+  return new Promise<any>((resolve, reject) => {
+    const payload = JSON.stringify({
+      transactions,
+      datasetPath: AI_DATASET_PATH,
+    });
+
+    const pythonProcess = spawn(PYTHON_EXECUTABLE, [AI_SCRIPT_PATH], {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      windowsHide: true,
+    });
+
+    let stdout = '';
+    let stderr = '';
+
+    const timeout = setTimeout(() => {
+      pythonProcess.kill();
+      reject(new Error('AI model timeout after 20s'));
+    }, 20000);
+
+    pythonProcess.stdout.on('data', (chunk) => {
+      stdout += chunk.toString();
+    });
+
+    pythonProcess.stderr.on('data', (chunk) => {
+      stderr += chunk.toString();
+    });
+
+    pythonProcess.on('error', (error) => {
+      clearTimeout(timeout);
+      reject(error);
+    });
+
+    pythonProcess.on('close', (code) => {
+      clearTimeout(timeout);
+
+      if (code !== 0) {
+        return reject(new Error(stderr || `AI model exited with code ${code}`));
+      }
+
+      try {
+        const parsed = JSON.parse(stdout);
+        resolve(parsed);
+      } catch (error) {
+        reject(new Error('Invalid AI model response'));
+      }
+    });
+
+    pythonProcess.stdin.write(payload);
+    pythonProcess.stdin.end();
+  });
+};
 
 // Middleware
 app.use(cors({ origin: corsOrigins.includes('*') ? true : corsOrigins }));
@@ -250,9 +318,63 @@ app.post('/api/budgets', async (req, res) => {
   }
 });
 
+// AI ENDPOINTS
+app.post('/api/ai/advanced-forecast', async (req, res) => {
+  try {
+    const rawTransactions = Array.isArray(req.body?.transactions) ? req.body.transactions : [];
+
+    if (rawTransactions.length < 1) {
+      return res.status(400).json({
+        error: 'At least 1 transaction is required for AI analysis',
+      });
+    }
+
+    const transactions: AITransactionInput[] = rawTransactions
+      .map((t: any) => {
+        const parsedDate = new Date(t.date);
+        if (Number.isNaN(parsedDate.getTime())) {
+          return null;
+        }
+
+        return {
+          amount: Number(t.amount),
+          category: String(t.category || 'other'),
+          type: t.type === 'income' ? 'income' : 'expense',
+          date: parsedDate.toISOString(),
+        };
+      })
+      .filter((t: AITransactionInput | null): t is AITransactionInput =>
+        Boolean(t) && Number.isFinite(t.amount) && t.amount > 0
+      );
+
+    if (transactions.length < 1) {
+      return res.status(400).json({
+        error: 'No valid transactions were provided for model inference',
+      });
+    }
+
+    const modelOutput = await runPythonAIInference(transactions);
+    res.json(modelOutput);
+  } catch (error: any) {
+    console.error('Advanced AI forecast failed:', error?.message || error);
+    res.status(500).json({
+      error: 'AI forecast failed. Ensure Python and model dependencies are installed.',
+    });
+  }
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
+});
+
+// Root route helper for local development.
+app.get('/', (_req, res) => {
+  res.status(200).json({
+    message: 'FinanceIQ API is running',
+    frontend: 'http://localhost:5173',
+    health: 'http://localhost:5000/api/health',
+  });
 });
 
 app.listen(PORT, () => {

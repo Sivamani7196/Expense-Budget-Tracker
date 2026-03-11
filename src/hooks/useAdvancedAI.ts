@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Transaction } from '../types';
-import { advancedAI, AdvancedAIAnalysis } from '../utils/advancedAI';
+import { AdvancedAIAnalysis } from '../utils/advancedAI';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export const useAdvancedAI = (transactions: Transaction[]) => {
   const [analysis, setAnalysis] = useState<AdvancedAIAnalysis | null>(null);
@@ -28,7 +30,7 @@ export const useAdvancedAI = (transactions: Transaction[]) => {
       setTrainingProgress(0);
       
       try {
-        // Simulate training progress
+        // Simulate model progress while waiting for backend inference.
         const progressInterval = setInterval(() => {
           setTrainingProgress(prev => {
             if (prev >= 90) {
@@ -39,8 +41,35 @@ export const useAdvancedAI = (transactions: Transaction[]) => {
           });
         }, 200);
 
-        // Perform actual AI analysis
-        const result = await advancedAI.analyzeTransactions(transactions);
+        const payload = transactions.map((tx) => ({
+          amount: tx.amount,
+          category: tx.category,
+          type: tx.type,
+          date: tx.date.toISOString(),
+        }));
+
+        const response = await fetch(`${API_URL}/ai/advanced-forecast`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ transactions: payload }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Backend AI forecast request failed');
+        }
+
+        const rawResult = await response.json();
+        const result: AdvancedAIAnalysis = {
+          ...rawResult,
+          anomalies: Array.isArray(rawResult?.anomalies)
+            ? rawResult.anomalies.map((item: any) => ({
+                ...item,
+                date: new Date(item.date),
+              }))
+            : [],
+        };
         
         clearInterval(progressInterval);
         setTrainingProgress(100);
@@ -74,7 +103,36 @@ export const useAdvancedAI = (transactions: Transaction[]) => {
     const interval = setInterval(async () => {
       if (!isAnalyzing && analysis) {
         try {
-          const result = await advancedAI.analyzeTransactions(transactions);
+          const payload = transactions.map((tx) => ({
+            amount: tx.amount,
+            category: tx.category,
+            type: tx.type,
+            date: tx.date.toISOString(),
+          }));
+
+          const response = await fetch(`${API_URL}/ai/advanced-forecast`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ transactions: payload }),
+          });
+
+          if (!response.ok) {
+            throw new Error('Backend AI refresh request failed');
+          }
+
+          const rawResult = await response.json();
+          const result: AdvancedAIAnalysis = {
+            ...rawResult,
+            anomalies: Array.isArray(rawResult?.anomalies)
+              ? rawResult.anomalies.map((item: any) => ({
+                  ...item,
+                  date: new Date(item.date),
+                }))
+              : [],
+          };
+
           setAnalysis(result);
           setLastAnalysisTime(new Date());
         } catch (error) {
@@ -93,6 +151,6 @@ export const useAdvancedAI = (transactions: Transaction[]) => {
     trainingProgress,
     hasData: transactions.length > 0,
     modelAccuracy: analysis?.modelAccuracy || 0,
-    isTraining: advancedAI.isCurrentlyTraining()
+    isTraining: isAnalyzing
   };
 };
